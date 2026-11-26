@@ -58,17 +58,29 @@ jobs:
       - name: Set up vcpkg (before Init, it resets the builder settings)
         working-directory: win-builder
         shell: powershell
-        run: ./build.ps1 -Vcpkg -Latest -Arch x64 -BuildConfigName kicad-claude
+        run: |
+          # GitHub runs powershell with ErrorActionPreference=Stop: a warning on stderr would abort
+          $ErrorActionPreference = 'Continue'
+          ./build.ps1 -Vcpkg -Latest -Arch x64 -BuildConfigName kicad-claude
+          exit $LASTEXITCODE
 
       - name: Init builder
         working-directory: win-builder
         shell: powershell
-        run: ./build.ps1 -Init
+        run: |
+          # GitHub runs powershell with ErrorActionPreference=Stop: a warning on stderr would abort
+          $ErrorActionPreference = 'Continue'
+          ./build.ps1 -Init
+          exit $LASTEXITCODE
 
       - name: Build KiCad (vcpkg dependencies + KiCad)
         working-directory: win-builder
         shell: powershell
-        run: ./build.ps1 -Build -Arch x64 -BuildConfigName kicad-claude
+        run: |
+          # GitHub runs powershell with ErrorActionPreference=Stop: a warning on stderr would abort
+          $ErrorActionPreference = 'Continue'
+          ./build.ps1 -Build -Arch x64 -BuildConfigName kicad-claude
+          exit $LASTEXITCODE
 
       - name: Save vcpkg binary cache
         if: always()
@@ -80,7 +92,11 @@ jobs:
       - name: Stage files (without 3D models)
         working-directory: win-builder
         shell: powershell
-        run: ./build.ps1 -PreparePackage -Arch x64 -BuildConfigName kicad-claude -Lite
+        run: |
+          # GitHub runs powershell with ErrorActionPreference=Stop: a warning on stderr would abort
+          $ErrorActionPreference = 'Continue'
+          ./build.ps1 -PreparePackage -Arch x64 -BuildConfigName kicad-claude -Lite
+          exit $LASTEXITCODE
 
       - name: Add Claude components
         shell: pwsh
