@@ -26,7 +26,7 @@
 
 #include <functional>
 
-#include <nlohmann/json.hpp>
+#include <json_common.h>
 
 #include <wx/app.h>
 #include <wx/button.h>

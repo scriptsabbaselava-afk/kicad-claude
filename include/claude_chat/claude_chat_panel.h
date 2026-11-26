@@ -31,7 +31,7 @@
 #include <thread>
 #include <vector>
 
-#include <nlohmann/json.hpp>
+#include <json_common.h>
 #include <wx/panel.h>
 #include <wx/timer.h>
 
