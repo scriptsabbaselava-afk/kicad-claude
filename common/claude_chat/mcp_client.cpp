@@ -96,24 +96,12 @@ bool MCP_CLIENT::IsRunning() const
 }
 
 
-bool MCP_CLIENT::Start( const CLAUDE_CHAT_CONFIG& aConfig, const wxString& aToolboxes,
-                        wxString& aError )
+void MCP_CLIENT::BuildServerEnv( const CLAUDE_CHAT_CONFIG& aConfig, const wxString& aToolboxes,
+                                 wxExecuteEnv& aEnv )
 {
-    Stop();
-
-    if( !wxFileName::FileExists( aConfig.m_server ) )
-    {
-        aError = wxString::Format( TR_UTF8( "Serveur MCP introuvable : %s\n"
-                                      "Relancez l'installateur ou corrigez le chemin dans "
-                                      "Préférences > Claude (IA)." ),
-                                   aConfig.m_server );
-        return false;
-    }
-
-    wxExecuteEnv env;
+    wxExecuteEnv& env = aEnv;
     wxGetEnvMap( &env.env );
 
-    wxString sep = wxFileName::GetPathSeparator();
 #ifdef __WXMSW__
     wxString pathSep = wxS( ";" );
 #else
@@ -178,6 +166,26 @@ bool MCP_CLIENT::Start( const CLAUDE_CHAT_CONFIG& aConfig, const wxString& aTool
     root.RemoveLastDir();
     env.cwd = root.GetPath();
 
+}
+
+
+bool MCP_CLIENT::Start( const CLAUDE_CHAT_CONFIG& aConfig, const wxString& aToolboxes,
+                        wxString& aError )
+{
+    Stop();
+
+    if( !wxFileName::FileExists( aConfig.m_server ) )
+    {
+        aError = wxString::Format( TR_UTF8( "Serveur MCP introuvable : %s\n"
+                                      "Relancez l'installateur ou corrigez le chemin dans "
+                                      "Préférences > Claude (IA)." ),
+                                   aConfig.m_server );
+        return false;
+    }
+
+    wxExecuteEnv env;
+    BuildServerEnv( aConfig, aToolboxes, env );
+
     m_exited = std::make_shared<std::atomic<bool>>( false );
     m_process = new MCP_PROCESS( m_exited );
 
@@ -207,7 +215,6 @@ bool MCP_CLIENT::Start( const CLAUDE_CHAT_CONFIG& aConfig, const wxString& aTool
     }
     m_initialized = false;
     m_toolsChanged = false;
-    (void) sep;
     return true;
 }
 

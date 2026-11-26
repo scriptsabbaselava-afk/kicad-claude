@@ -44,6 +44,10 @@ struct CLAUDE_CHAT_CONFIG
     wxString m_kicadPython;  ///< Python interpreter given to the MCP server (KICAD_PYTHON)
     wxString m_pythonPath;   ///< PYTHONPATH given to the MCP server (may be empty)
     wxString m_toolboxes;    ///< Extra MCP toolboxes opened at start (KICAD_MCP_TOOLBOXES)
+    wxString m_backend;      ///< "api" (Anthropic API key) or "claude-code" (Claude subscription)
+    wxString m_claudePath;   ///< Claude Code executable, for the "claude-code" backend
+
+    bool UsesClaudeCode() const { return m_backend == wxS( "claude-code" ); }
 
     /// Load from disk, filling every empty value with an auto-detected default.
     static CLAUDE_CHAT_CONFIG Load();
@@ -51,6 +55,9 @@ struct CLAUDE_CHAT_CONFIG
     bool Save() const;
 
     static wxString ConfigFilePath();
+
+    /// Where Claude Code is installed, if found (else "claude").
+    static wxString DefaultClaudePath();
 
     /// Folder where the installer puts node / the MCP server (~/kicad-claude or %LOCALAPPDATA%\KiCadClaude).
     static wxString InstallBaseDir();

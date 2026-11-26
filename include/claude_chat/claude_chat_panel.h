@@ -37,6 +37,7 @@
 
 #include <claude_chat/claude_chat_config.h>
 #include <claude_chat/mcp_client.h>
+#include <claude_chat/child_process.h>
 
 class wxHtmlWindow;
 class wxTextCtrl;
@@ -110,6 +111,13 @@ private:
     void setBusy( bool aBusy, const wxString& aStatus = wxEmptyString );
     bool ensureIpcApiEnabled();
 
+    wxString buildContext( const wxString& aText );
+
+    // ---- "Claude account" backend (Claude Code), see claude_chat_claude_code.cpp ----
+    void sendViaClaudeCode( const wxString& aText );
+    void workerClaudeCode( wxString aDocPath );
+    bool writeClaudeCodeMcpConfig( const wxString& aPath, wxString& aError );
+
     // ---- worker thread side ----
     void workerMain( wxString aUserBlock, wxString aApiKey, wxString aDocPath );
     bool ensureTools( wxString& aError );
@@ -142,6 +150,9 @@ private:
     std::atomic<bool>                  m_cancel;
     std::atomic<bool>                  m_busy;
     std::shared_ptr<std::atomic<bool>> m_alive;
+
+    CLAUDE_CHILD_PROCESS m_claudeCode;     ///< running "claude -p" (Claude account backend)
+    wxString             m_claudeSession;  ///< Claude Code session id, to continue the chat
 
     MCP_CLIENT     m_mcp;
     wxString       m_serverSignature; ///< settings the running server was started with

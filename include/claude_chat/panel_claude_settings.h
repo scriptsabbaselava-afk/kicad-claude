@@ -24,15 +24,20 @@
 #ifndef PANEL_CLAUDE_SETTINGS_H
 #define PANEL_CLAUDE_SETTINGS_H
 
+#include <vector>
+
 #include <widgets/resettable_panel.h>
 
 class wxTextCtrl;
 class wxComboBox;
 class wxStaticText;
+class wxRadioBox;
+class wxButton;
 
 /**
- * Preferences page for the Claude chat panel: API key (stored in the OS keychain),
- * model, and the paths used to run the KiCad MCP server.
+ * Preferences page for the Claude chat panel: how to connect (Claude account through
+ * Claude Code, or Anthropic API key stored in the OS keychain), model, and the paths used
+ * to run the KiCad MCP server.
  */
 class PANEL_CLAUDE_SETTINGS : public RESETTABLE_PANEL
 {
@@ -45,9 +50,22 @@ public:
 
 private:
     void updateKeyStatus();
+    void updateAccountStatus();
+    void updateEnabledState();
+    void runClaudeCommand( const std::vector<wxString>& aArgv, const wxString& aRunningText,
+                           bool aShowConsole );
+
+    wxRadioBox*   m_backend;
+    wxTextCtrl*   m_claudePath;
+    wxButton*     m_installBtn;
+    wxButton*     m_loginBtn;
+    wxButton*     m_checkBtn;
+    wxStaticText* m_accountStatus;
 
     wxTextCtrl*   m_apiKey;
+    wxButton*     m_forgetBtn;
     wxStaticText* m_keyStatus;
+
     wxComboBox*   m_model;
     wxTextCtrl*   m_node;
     wxTextCtrl*   m_server;

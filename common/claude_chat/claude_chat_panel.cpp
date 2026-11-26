@@ -238,13 +238,24 @@ CLAUDE_CHAT_PANEL::CLAUDE_CHAT_PANEL( wxWindow* aParent, const CLAUDE_CHAT_HOOKS
                                    "MCP KiCad ; chaque action s'affiche ici." ),
                                 m_hooks.m_editorName ) );
 
-    wxString key;
-
-    if( !CLAUDE_CHAT_CONFIG::GetApiKey( key ) )
+    if( m_cfg.UsesClaudeCode() )
     {
-        addEntry( ENTRY_KIND::INFO, TR_UTF8( "Aucune clé API Anthropic n'est configurée : cliquez sur "
-                                       "« Réglages » pour l'ajouter. Elle est rangée dans le "
-                                       "trousseau du système, jamais dans un fichier." ) );
+        addEntry( ENTRY_KIND::INFO, TR_UTF8( "Mode : votre compte Claude (abonnement Pro ou Max), "
+                                             "via Claude Code. Première fois : cliquez sur "
+                                             "« Réglages » puis « Se connecter avec mon compte "
+                                             "Claude »." ) );
+    }
+    else
+    {
+        wxString key;
+
+        if( !CLAUDE_CHAT_CONFIG::GetApiKey( key ) )
+        {
+            addEntry( ENTRY_KIND::INFO, TR_UTF8( "Aucune clé API Anthropic n'est configurée : "
+                                                 "cliquez sur « Réglages » pour l'ajouter. Elle "
+                                                 "est rangée dans le trousseau du système, "
+                                                 "jamais dans un fichier." ) );
+        }
     }
 
     ensureIpcApiEnabled();
@@ -267,6 +278,7 @@ void CLAUDE_CHAT_PANEL::Shutdown()
         m_worker.join();
 
     m_timer.Stop();
+    m_claudeCode.Kill();
     m_mcp.Stop();
     *m_alive = false;
 }
@@ -456,6 +468,7 @@ void CLAUDE_CHAT_PANEL::onNewChat( wxCommandEvent& aEvent )
         return;
 
     m_messages = json::array();
+    m_claudeSession.Clear();
     m_entries.clear();
     addEntry( ENTRY_KIND::INFO, TR_UTF8( "Nouvelle conversation." ) );
 }
@@ -491,6 +504,18 @@ void CLAUDE_CHAT_PANEL::sendMessage()
     if( text.IsEmpty() )
         return;
 
+    if( m_worker.joinable() )
+        m_worker.join();
+
+    // Pick up changes made in Preferences > Claude (IA) since the last message.
+    m_cfg = CLAUDE_CHAT_CONFIG::Load();
+
+    if( m_cfg.UsesClaudeCode() )
+    {
+        sendViaClaudeCode( text );
+        return;
+    }
+
     wxString apiKey;
 
     if( !CLAUDE_CHAT_CONFIG::GetApiKey( apiKey ) )
@@ -500,11 +525,6 @@ void CLAUDE_CHAT_PANEL::sendMessage()
         return;
     }
 
-    if( m_worker.joinable() )
-        m_worker.join();
-
-    // Pick up changes made in Preferences > Claude (IA) since the last message.
-    m_cfg = CLAUDE_CHAT_CONFIG::Load();
     wxString signature = m_cfg.m_node + wxS( "|" ) + m_cfg.m_server + wxS( "|" )
                          + m_cfg.m_kicadPython + wxS( "|" ) + m_cfg.m_pythonPath + wxS( "|" )
                          + m_cfg.m_toolboxes;
@@ -531,6 +551,18 @@ void CLAUDE_CHAT_PANEL::sendMessage()
     m_input->Clear();
     addEntry( ENTRY_KIND::USER, text );
 
+    wxString doc = m_hooks.m_documentPath ? m_hooks.m_documentPath() : wxString();
+    wxString context = buildContext( text );
+
+    m_cancel = false;
+    setBusy( true, TR_UTF8( "Claude réfléchit…" ) );
+
+    m_worker = std::thread( &CLAUDE_CHAT_PANEL::workerMain, this, context, apiKey, doc );
+}
+
+
+wxString CLAUDE_CHAT_PANEL::buildContext( const wxString& aText )
+{
     // Tell Claude what is open in this editor.
     wxString doc = m_hooks.m_documentPath ? m_hooks.m_documentPath() : wxString();
     wxString pro = m_hooks.m_projectPath ? m_hooks.m_projectPath() : wxString();
@@ -541,12 +573,8 @@ void CLAUDE_CHAT_PANEL::sendMessage()
                + wxS( "\n" );
     context += wxS( "project: " ) + ( pro.IsEmpty() ? wxString( wxS( "(none)" ) ) : pro )
                + wxS( "\n" );
-    context += wxS( "</kicad_context>\n\n" ) + text;
-
-    m_cancel = false;
-    setBusy( true, TR_UTF8( "Claude réfléchit…" ) );
-
-    m_worker = std::thread( &CLAUDE_CHAT_PANEL::workerMain, this, context, apiKey, doc );
+    context += wxS( "</kicad_context>\n\n" ) + aText;
+    return context;
 }
 
 

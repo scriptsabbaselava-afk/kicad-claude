@@ -91,6 +91,27 @@ static wxString defaultNode( const wxString& aBase )
 }
 
 
+/// Claude Code as installed by Anthropic's native installer, npm or Homebrew.
+static wxString defaultClaudePath()
+{
+    wxString home = wxGetHomeDir();
+#ifdef __WXMSW__
+    wxString appData;
+    wxGetEnv( wxS( "APPDATA" ), &appData );
+    wxString found = firstExisting( { home + wxS( "\\.local\\bin\\claude.exe" ),
+                                      appData + wxS( "\\npm\\claude.cmd" ) } );
+    return found.IsEmpty() ? wxString( wxS( "claude.exe" ) ) : found;
+#else
+    wxString found = firstExisting( { home + wxS( "/.local/bin/claude" ),
+                                      home + wxS( "/.claude/local/claude" ),
+                                      wxS( "/opt/homebrew/bin/claude" ),
+                                      wxS( "/usr/local/bin/claude" ),
+                                      wxS( "/usr/bin/claude" ) } );
+    return found.IsEmpty() ? wxString( wxS( "claude" ) ) : found;
+#endif
+}
+
+
 static wxString defaultKicadPython()
 {
     wxFileName exe( wxStandardPaths::Get().GetExecutablePath() );
@@ -162,6 +183,12 @@ static wxString bundledDir()
 }
 
 
+wxString CLAUDE_CHAT_CONFIG::DefaultClaudePath()
+{
+    return defaultClaudePath();
+}
+
+
 CLAUDE_CHAT_CONFIG CLAUDE_CHAT_CONFIG::Load()
 {
     CLAUDE_CHAT_CONFIG cfg;
@@ -189,6 +216,8 @@ CLAUDE_CHAT_CONFIG CLAUDE_CHAT_CONFIG::Load()
                 get( "kicad_python", cfg.m_kicadPython );
                 get( "pythonpath", cfg.m_pythonPath );
                 get( "toolboxes", cfg.m_toolboxes );
+                get( "backend", cfg.m_backend );
+                get( "claude_path", cfg.m_claudePath );
             }
             catch( ... )
             {
@@ -238,6 +267,13 @@ CLAUDE_CHAT_CONFIG CLAUDE_CHAT_CONFIG::Load()
     if( cfg.m_pythonPath.IsEmpty() )
         cfg.m_pythonPath = defaultPythonPath();
 
+    // Default: the user's Claude account (subscription) through Claude Code.
+    if( cfg.m_backend != wxS( "api" ) )
+        cfg.m_backend = wxS( "claude-code" );
+
+    if( cfg.m_claudePath.IsEmpty() )
+        cfg.m_claudePath = defaultClaudePath();
+
     return cfg;
 }
 
@@ -251,6 +287,8 @@ bool CLAUDE_CHAT_CONFIG::Save() const
     j["kicad_python"] = m_kicadPython.ToStdString( wxConvUTF8 );
     j["pythonpath"] = m_pythonPath.ToStdString( wxConvUTF8 );
     j["toolboxes"] = m_toolboxes.ToStdString( wxConvUTF8 );
+    j["backend"] = m_backend.ToStdString( wxConvUTF8 );
+    j["claude_path"] = m_claudePath.ToStdString( wxConvUTF8 );
 
     wxFFile file( ConfigFilePath(), wxS( "w" ) );
 

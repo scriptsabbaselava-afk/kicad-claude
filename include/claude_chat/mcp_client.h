@@ -31,6 +31,7 @@
 
 #include <nlohmann/json.hpp>
 #include <wx/string.h>
+#include <wx/utils.h>
 
 struct CLAUDE_CHAT_CONFIG;
 class MCP_PROCESS;
@@ -49,6 +50,11 @@ public:
     ~MCP_CLIENT();
 
     bool Start( const CLAUDE_CHAT_CONFIG& aConfig, const wxString& aToolboxes, wxString& aError );
+
+    /// Environment (PATH, KICAD_PYTHON, PYTHONPATH, toolboxes...) and working directory the
+    /// KiCad MCP server needs.  Also used when Claude Code launches the server itself.
+    static void BuildServerEnv( const CLAUDE_CHAT_CONFIG& aConfig, const wxString& aToolboxes,
+                                wxExecuteEnv& aEnv );
     void Stop();
     bool IsRunning() const;
     bool IsInitialized() const { return m_initialized; }

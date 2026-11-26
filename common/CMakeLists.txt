@@ -552,6 +552,8 @@ set( COMMON_DLG_SRCS
     dialogs/hotkey_cycle_popup.cpp
     dialogs/html_message_box.cpp
     claude_chat/claude_chat_config.cpp
+    claude_chat/claude_chat_claude_code.cpp
+    claude_chat/child_process.cpp
     claude_chat/claude_chat_panel.cpp
     claude_chat/mcp_client.cpp
     claude_chat/panel_claude_settings.cpp
