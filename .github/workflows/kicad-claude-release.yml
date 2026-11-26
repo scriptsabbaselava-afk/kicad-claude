@@ -1,0 +1,39 @@
+# Publishes the files built by an earlier "KiCad-Claude Windows" run as a GitHub Release,
+# without rebuilding anything.
+name: KiCad-Claude publish release
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "Id of the finished KiCad-Claude Windows run"
+        required: true
+      tag:
+        description: "Release tag to create"
+        required: true
+        default: "v10.0.8-claude.1"
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: kicad-claude-windows-x64
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ github.token }}
+          path: out
+      - name: Verify checksum
+        run: cd out && sha256sum -c KiCad-Claude-Windows-x64.msi.sha256 && ls -l
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag }}
+          name: KiCad-Claude ${{ inputs.tag }}
+          body: |
+            KiCad 10.0.8 with a Claude chat panel. Windows installer (not signed: SmartScreen shows a warning, click "More info" then "Run anyway").
+            Source code: this repository, branch `claude-chat`. KiCad and the additions are GPL.
+          files: out/*
