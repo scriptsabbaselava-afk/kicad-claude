@@ -60,6 +60,11 @@ jobs:
         shell: powershell
         run: ./build.ps1 -Init
 
+      - name: Set up vcpkg
+        working-directory: win-builder
+        shell: powershell
+        run: ./build.ps1 -Vcpkg -Latest -Arch x64 -BuildConfigName kicad-claude
+
       - name: Build KiCad (vcpkg dependencies + KiCad)
         working-directory: win-builder
         shell: powershell
