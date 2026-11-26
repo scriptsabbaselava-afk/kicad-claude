@@ -34,7 +34,6 @@ rm -rf "$OUT/node"
 mkdir -p "$OUT/node"
 tar -xzf "$WORK/$NODE_TGZ" -C "$OUT/node" --strip-components 1
 rm -rf "$OUT/node/include" "$OUT/node/share"
-NODE="$OUT/node/bin/node"
 NPM="$OUT/node/bin/npm"
 
 echo "== KiCad MCP server ${MCP_SERVER_COMMIT:0:7}"

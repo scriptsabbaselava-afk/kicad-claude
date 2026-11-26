@@ -1,0 +1,20 @@
+KiCad-Claude pour Mac (Apple silicon ou Intel)
+==============================================
+
+1. Ouvrez le Terminal (Applications > Utilitaires > Terminal).
+2. Tapez  bash  suivi d'une espace.
+3. Glissez le fichier INSTALLER-SUR-MAC.command dans la fenêtre du Terminal.
+4. Appuyez sur Entrée.
+
+Le script compile KiCad avec le panneau de chat Claude sur votre Mac, puis
+l'installe dans /Applications/KiCad-Claude et l'ouvre.
+La première fois : 1 à 3 heures et environ 30 Go libres. Laissez le Mac branché.
+Votre mot de passe Mac peut être demandé (installation de Homebrew).
+Si macOS propose d'installer les « outils de ligne de commande », acceptez puis
+relancez le script.
+
+Ensuite : dans l'éditeur de schéma ou de PCB, panneau « Claude » à droite,
+cliquez sur « Réglages » et collez votre clé API Anthropic (sk-ant-...).
+Elle est rangée dans le trousseau macOS.
+
+En cas d'échec, le journal est dans kicad-claude-installation.log sur le Bureau.
