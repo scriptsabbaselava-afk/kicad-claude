@@ -57,12 +57,12 @@ jobs:
 
       - name: Init builder
         working-directory: win-builder
-        shell: pwsh
+        shell: powershell
         run: ./build.ps1 -Init
 
       - name: Build KiCad (vcpkg dependencies + KiCad)
         working-directory: win-builder
-        shell: pwsh
+        shell: powershell
         run: ./build.ps1 -Build -Arch x64 -BuildConfigName kicad-claude
 
       - name: Save vcpkg binary cache
@@ -74,7 +74,7 @@ jobs:
 
       - name: Stage files (without 3D models)
         working-directory: win-builder
-        shell: pwsh
+        shell: powershell
         run: ./build.ps1 -PreparePackage -Arch x64 -BuildConfigName kicad-claude -Lite
 
       - name: Add Claude components
