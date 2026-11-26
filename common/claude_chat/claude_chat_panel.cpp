@@ -698,7 +698,14 @@ bool CLAUDE_CHAT_PANEL::callClaude( const wxString& aApiKey, json& aResponse, wx
     for( int attempt = 0; ; ++attempt )
     {
         KICAD_CURL_EASY curl;
-        curl.SetURL( API_URL );
+        // KICAD_CLAUDE_API_URL is only meant for testing against a local server.
+        wxString urlOverride;
+        std::string url = API_URL;
+
+        if( wxGetEnv( wxS( "KICAD_CLAUDE_API_URL" ), &urlOverride ) && !urlOverride.IsEmpty() )
+            url = urlOverride.ToStdString( wxConvUTF8 );
+
+        curl.SetURL( url );
         curl.SetUserAgent( "KiCad-Claude-Chat/1.0" );
         curl.SetHeader( "x-api-key", aApiKey.ToStdString( wxConvUTF8 ) );
         curl.SetHeader( "anthropic-version", API_VERSION );
