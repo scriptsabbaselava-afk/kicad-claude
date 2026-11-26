@@ -1,0 +1,114 @@
+# Builds KiCad-Claude for Windows with KiCad's own build tool (kicad-win-builder, MSVC +
+# vcpkg), adds the Claude components and packages everything as an MSI with WiX.
+#
+# The first run compiles every vcpkg dependency and can take most of the 6 h limit; the
+# compiled packages are cached, so if it times out simply re-run the workflow.
+name: KiCad-Claude Windows
+
+on:
+  workflow_dispatch:
+  push:
+    tags: [ 'v*' ]
+
+permissions:
+  contents: write
+
+env:
+  VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}\vcpkg-cache
+  MSI_VERSION: 10.0.8.1
+
+jobs:
+  build:
+    runs-on: windows-2022
+    timeout-minutes: 355
+    steps:
+      - name: Checkout KiCad-Claude (packaging scripts)
+        uses: actions/checkout@v4
+        with:
+          path: kicad-src
+          fetch-depth: 1
+
+      - name: Checkout kicad-win-builder
+        run: git clone --depth 1 https://gitlab.com/kicad/packaging/kicad-win-builder.git win-builder
+
+      - name: Restore vcpkg binary cache
+        uses: actions/cache/restore@v4
+        with:
+          path: vcpkg-cache
+          key: vcpkg-x64-${{ hashFiles('kicad-src/vcpkg.json', 'kicad-src/vcpkg-configuration.json') }}-${{ github.run_id }}
+          restore-keys: |
+            vcpkg-x64-${{ hashFiles('kicad-src/vcpkg.json', 'kicad-src/vcpkg-configuration.json') }}-
+            vcpkg-x64-
+
+      - name: Write build configuration
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path $env:VCPKG_DEFAULT_BINARY_CACHE | Out-Null
+          $ref = "${{ github.ref }}"
+          if ($ref.StartsWith("refs/tags/")) { $kref = "tag/" + $ref.Substring(10) }
+          else { $kref = "branch/" + $ref.Substring(11) }
+          $cfg = Get-Content win-builder/build-configs/kicad-10.0.8.json | ConvertFrom-Json
+          $cfg.name = "KiCad-Claude 10.0.8"
+          $cfg.output_prefix = "kicad-claude-"
+          $cfg.sources.kicad | Add-Member -NotePropertyName repo -NotePropertyValue "https://github.com/${{ github.repository }}.git" -Force
+          $cfg.sources.kicad.ref = $kref
+          $cfg | ConvertTo-Json -Depth 10 | Set-Content win-builder/build-configs/kicad-claude.json
+          Get-Content win-builder/build-configs/kicad-claude.json
+
+      - name: Init builder
+        working-directory: win-builder
+        shell: pwsh
+        run: ./build.ps1 -Init
+
+      - name: Build KiCad (vcpkg dependencies + KiCad)
+        working-directory: win-builder
+        shell: pwsh
+        run: ./build.ps1 -Build -Arch x64 -BuildConfigName kicad-claude
+
+      - name: Save vcpkg binary cache
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: vcpkg-cache
+          key: vcpkg-x64-${{ hashFiles('kicad-src/vcpkg.json', 'kicad-src/vcpkg-configuration.json') }}-${{ github.run_id }}
+
+      - name: Stage files (without 3D models)
+        working-directory: win-builder
+        shell: pwsh
+        run: ./build.ps1 -PreparePackage -Arch x64 -BuildConfigName kicad-claude -Lite
+
+      - name: Add Claude components
+        shell: pwsh
+        run: |
+          $root = Resolve-Path "win-builder/.out/x64-windows-Release"
+          ./kicad-src/claude-packaging/windows/bundle-components.ps1 -KiCadRoot $root
+
+      - name: Build MSI
+        shell: pwsh
+        run: |
+          dotnet tool install --global wix --version 5.0.2
+          wix extension add -g WixToolset.UI.wixext/5.0.2
+          $root = Resolve-Path "win-builder/.out/x64-windows-Release"
+          New-Item -ItemType Directory -Force -Path out | Out-Null
+          wix build kicad-src/claude-packaging/windows/kicad-claude.wxs -arch x64 `
+              -ext WixToolset.UI.wixext `
+              -d SourceDir=$root `
+              -d Version=$env:MSI_VERSION `
+              -d LicenseRtf=kicad-src/claude-packaging/windows/license.rtf `
+              -o out/KiCad-Claude-Windows-x64.msi
+          $h = (Get-FileHash out/KiCad-Claude-Windows-x64.msi -Algorithm SHA256).Hash.ToLower()
+          "$h  KiCad-Claude-Windows-x64.msi" | Set-Content out/KiCad-Claude-Windows-x64.msi.sha256
+          Get-ChildItem out
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: kicad-claude-windows-x64
+          path: out/*
+          retention-days: 14
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: out/*

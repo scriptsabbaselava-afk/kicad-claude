@@ -551,6 +551,10 @@ set( COMMON_DLG_SRCS
     dialogs/eda_view_switcher_base.cpp
     dialogs/hotkey_cycle_popup.cpp
     dialogs/html_message_box.cpp
+    claude_chat/claude_chat_config.cpp
+    claude_chat/claude_chat_panel.cpp
+    claude_chat/mcp_client.cpp
+    claude_chat/panel_claude_settings.cpp
     dialogs/panel_color_settings_base.cpp
     dialogs/panel_color_settings.cpp
     dialogs/panel_common_settings.cpp

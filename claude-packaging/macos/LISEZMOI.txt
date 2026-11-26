@@ -1,0 +1,17 @@
+KiCad-Claude pour macOS
+=======================
+
+1. Ouvrez l'application Terminal (Applications > Utilitaires > Terminal).
+2. Tapez  bash  suivi d'une espace.
+3. Glissez le fichier « Installer KiCad Claude.command » dans la fenêtre du Terminal.
+4. Appuyez sur Entrée.
+
+Le script télécharge KiCad-Claude (environ 1,5 Go), l'installe dans
+/Applications/KiCad-Claude puis ouvre KiCad.
+
+Au premier lancement : dans le panneau « Claude » à droite de l'éditeur de schéma ou
+de PCB, cliquez sur « Réglages » et collez votre clé API Anthropic (sk-ant-...).
+Elle est rangée dans le trousseau macOS, jamais dans un fichier.
+
+KiCad et ce panneau sont des logiciels libres (licence GPL). Le serveur MCP KiCad
+(mixelpixx/KiCAD-MCP-Server) est sous licence MIT.

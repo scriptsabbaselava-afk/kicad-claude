@@ -127,6 +127,7 @@
 #ifdef KICAD_IPC_API
 #include <api/api_plugin_manager.h>
 #include <api/api_utils.h>
+#include <claude_chat/claude_chat_panel.h>
 #endif
 
 #include <dialog_change_symbols.h>
@@ -299,8 +300,39 @@ SCH_EDIT_FRAME::SCH_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
                       .DestroyOnClose( false )
                       .Show( m_show_search ) );
 
+    {
+        CLAUDE_CHAT_HOOKS hooks;
+        hooks.m_editorName = wxString::FromUTF8( "éditeur de schéma" );
+        hooks.m_toolboxes = wxS( "schematic" );
+        hooks.m_documentPath = [this]() -> wxString
+        {
+            return m_schematic && m_schematic->IsValid() ? Schematic().GetFileName() : wxString();
+        };
+        hooks.m_projectPath = [this]() -> wxString { return Prj().GetProjectFullName(); };
+        hooks.m_isModified = [this]() -> bool { return IsContentModified(); };
+        hooks.m_save = [this]() -> bool { return SaveProject(); };
+        hooks.m_reload = [this]()
+        {
+            wxString fn = Schematic().GetFileName();
+
+            if( fn.IsEmpty() || !wxFileName::FileExists( fn ) )
+                return;
+
+            SCH_SCREENS screenList( Schematic().Root() );
+
+            for( SCH_SCREEN* screen = screenList.GetFirst(); screen; screen = screenList.GetNext() )
+                screen->SetContentModified( false );    // do not prompt the user for changes
+
+            ReleaseFile();
+            OpenProjectFiles( std::vector<wxString>( 1, fn ), KICTL_REVERT );
+        };
+
+        AddClaudeChatPane( m_auimgr, this, hooks );
+    }
+
     RestoreAuiLayout();
     FinishAUIInitialization();
+    ShowClaudeChatPane( m_auimgr );
 
     wxAuiPaneInfo& hierarchy_pane = m_auimgr.GetPane( SchematicHierarchyPaneName() );
     wxAuiPaneInfo& netNavigatorPane = m_auimgr.GetPane( NetNavigatorPaneName() );
@@ -593,6 +625,8 @@ void SCH_EDIT_FRAME::OnCrossProbeFlashTimer( wxTimerEvent& aEvent )
 
 SCH_EDIT_FRAME::~SCH_EDIT_FRAME()
 {
+    ShutdownClaudeChatPane( m_auimgr );
+
     // Ensure that teardowns without doCloseWindow are fully unregistered
     if( m_schematic )
         Kiway().LocalHistory().UnregisterSaver( m_schematic );

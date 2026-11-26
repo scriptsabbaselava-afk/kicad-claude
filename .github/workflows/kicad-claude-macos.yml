@@ -1,0 +1,70 @@
+# Builds KiCad-Claude for macOS with KiCad's own packaging tool (kicad-mac-builder),
+# adds the Claude components and publishes the zips.
+name: KiCad-Claude macOS
+
+on:
+  workflow_dispatch:
+  push:
+    tags: [ 'v*' ]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            runner: macos-15
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 355
+    steps:
+      - name: Checkout KiCad-Claude (packaging scripts)
+        uses: actions/checkout@v4
+        with:
+          path: kicad-src
+          fetch-depth: 1
+
+      - name: Checkout kicad-mac-builder (10.0)
+        run: git clone --depth 1 --branch 10.0 https://gitlab.com/kicad/packaging/kicad-mac-builder.git mac-builder
+
+      - name: Install Homebrew dependencies
+        run: |
+          source mac-builder/ci/src/brew_deps.sh
+          brew install "${BREW_DEPS[@]}" || brew install "${BREW_DEPS[@]}"
+
+      - name: Build KiCad and package DMG
+        working-directory: mac-builder
+        run: |
+          ./build.py --arch=${{ matrix.arch }} \
+                     --kicad-git-url "https://github.com/${{ github.repository }}.git" \
+                     --kicad-ref "${{ github.sha }}" \
+                     --symbols-ref 10.0.8 \
+                     --footprints-ref 10.0.8 \
+                     --templates-ref 10.0.8 \
+                     --packages3d-ref 10.0.8 \
+                     --build-type Release \
+                     --extra-version "claude" \
+                     --target package-kicad-nightly \
+                     --jobs 4
+
+      - name: Add Claude components and make zips
+        run: |
+          DMG=$(ls mac-builder/build/dmg/*.dmg | head -n 1)
+          echo "DMG: $DMG"
+          kicad-src/claude-packaging/macos/make-release-zip.sh "$DMG" ${{ matrix.arch }} out "${{ github.repository }}"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: kicad-claude-macos-${{ matrix.arch }}
+          path: out/*
+          retention-days: 14
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: out/*

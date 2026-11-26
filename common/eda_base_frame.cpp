@@ -28,6 +28,7 @@
 #include "kicad_manager_frame.h"
 #include <eda_base_frame.h>
 #include <nlohmann/json.hpp>
+#include <claude_chat/panel_claude_settings.h>
 
 #include <advanced_config.h>
 #include <bitmaps.h>
@@ -1616,6 +1617,12 @@ void EDA_BASE_FRAME::ShowPreferences( wxString aStartPage, wxString aStartParent
                 {
                     return new PANEL_GIT_REPOS( aParent );
                 }, _( "Version Control" ) );
+
+        book->AddLazyPage(
+                []( wxWindow* aParent ) -> wxWindow*
+                {
+                    return new PANEL_CLAUDE_SETTINGS( aParent );
+                }, wxString::FromUTF8( "Claude (IA)" ) );
 
 #ifdef KICAD_USE_SENTRY
         book->AddLazyPage(

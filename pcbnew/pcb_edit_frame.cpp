@@ -146,6 +146,7 @@
 #include <api/api_handler_pcb.h>
 #include <api/api_handler_common.h>
 #include <api/api_utils.h>
+#include <claude_chat/claude_chat_panel.h>
 #endif
 
 #include <action_plugin.h>
@@ -411,7 +412,46 @@ PCB_EDIT_FRAME::PCB_EDIT_FRAME( KIWAY* aKiway, wxWindow* aParent ) :
                       .DestroyOnClose( false )
                       .CloseButton( true ) );
 
+    {
+        CLAUDE_CHAT_HOOKS hooks;
+        hooks.m_editorName = wxString::FromUTF8( "éditeur de PCB" );
+        hooks.m_toolboxes = wxS( "drc,component" );
+        hooks.m_documentPath = [this]() -> wxString
+        {
+            if( !GetBoard() || GetBoard()->GetFileName().IsEmpty() )
+                return wxString();
+
+            return Prj().AbsolutePath( GetBoard()->GetFileName() );
+        };
+        hooks.m_projectPath = [this]() -> wxString { return Prj().GetProjectFullName(); };
+        hooks.m_isModified = [this]() -> bool { return IsContentModified(); };
+        hooks.m_save = [this]() -> bool
+        {
+            if( !GetBoard() || GetBoard()->GetFileName().IsEmpty() )
+                return false;
+
+            return SavePcbFile( Prj().AbsolutePath( GetBoard()->GetFileName() ) );
+        };
+        hooks.m_reload = [this]()
+        {
+            if( !GetBoard() || GetBoard()->GetFileName().IsEmpty() )
+                return;
+
+            wxString fn = Prj().AbsolutePath( GetBoard()->GetFileName() );
+
+            if( !wxFileName::FileExists( fn ) )
+                return;
+
+            GetScreen()->SetContentModified( false );    // do not prompt the user for changes
+            ReleaseFile();
+            OpenProjectFiles( std::vector<wxString>( 1, fn ), KICTL_REVERT );
+        };
+
+        AddClaudeChatPane( m_auimgr, this, hooks );
+    }
+
     RestoreAuiLayout();
+    ShowClaudeChatPane( m_auimgr );
 
     m_auimgr.GetPane( "LayersManager" ).Show( m_ShowLayerManagerTools );
     m_auimgr.GetPane( "SelectionFilter" ).Show( m_ShowLayerManagerTools );
@@ -777,6 +817,8 @@ void PCB_EDIT_FRAME::OnCrossProbeFlashTimer( wxTimerEvent& aEvent )
 
 PCB_EDIT_FRAME::~PCB_EDIT_FRAME()
 {
+    ShutdownClaudeChatPane( m_auimgr );
+
     // Always ensure that we are unregistered even in a close without graceful doCloseWindow()
     if( GetBoard() )
         Kiway().LocalHistory().UnregisterSaver( GetBoard() );

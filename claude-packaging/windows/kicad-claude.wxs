@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Copyright The KiCad Developers, see AUTHORS.txt for contributors.
+  SPDX-License-Identifier: GPL-2.0-or-later
+
+  MSI for KiCad-Claude (WiX Toolset v5).
+  Build:  wix build kicad-claude.wxs -arch x64 -d SourceDir=<staged root> -d Version=10.0.8.1
+          -ext WixToolset.UI.wixext -o KiCad-Claude-Windows-x64.msi
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+
+  <Package Name="KiCad-Claude"
+           Manufacturer="KiCad-Claude (fork GPL de KiCad)"
+           Version="$(var.Version)"
+           UpgradeCode="5B0C6C5E-3C1A-4E0B-9D5F-6B2C2F7B9A10"
+           Scope="perMachine"
+           Language="1036"
+           Codepage="1252"
+           Compressed="yes">
+
+    <SummaryInformation Description="KiCad avec un panneau de chat Claude intégré" />
+
+    <MajorUpgrade DowngradeErrorMessage="Une version plus récente de KiCad-Claude est déjà installée." />
+
+    <!-- Several cabinets: the KiCad libraries are large. -->
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" MaximumUncompressedMediaSize="900" />
+
+    <Icon Id="KiCadIcon" SourceFile="$(var.SourceDir)\bin\kicad.exe" />
+    <Property Id="ARPPRODUCTICON" Value="KiCadIcon" />
+    <Property Id="ARPURLINFOABOUT" Value="https://www.kicad.org" />
+
+    <WixVariable Id="WixUILicenseRtf" Value="$(var.LicenseRtf)" />
+    <Property Id="WIXUI_INSTALLDIR" Value="INSTALLFOLDER" />
+    <ui:WixUI Id="WixUI_InstallDir" />
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLFOLDER" Name="KiCad-Claude">
+        <Files Include="$(var.SourceDir)\bin\**" Subdirectory="bin" />
+        <Files Include="$(var.SourceDir)\lib\**" Subdirectory="lib" />
+        <Files Include="$(var.SourceDir)\share\**" Subdirectory="share" />
+        <Files Include="$(var.SourceDir)\etc\**" Subdirectory="etc" />
+        <Files Include="$(var.SourceDir)\claude\**" Subdirectory="claude" />
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="StartMenuDir" Name="KiCad-Claude">
+        <Component Id="StartMenuShortcuts" Guid="9E1D3B2A-6C4F-4C8E-A1B7-2F5D8E9C0A31">
+          <Shortcut Id="KiCadShortcut"
+                    Name="KiCad-Claude"
+                    Description="KiCad avec le panneau de chat Claude"
+                    Target="[INSTALLFOLDER]bin\kicad.exe"
+                    WorkingDirectory="INSTALLFOLDER" />
+          <Shortcut Id="EeschemaShortcut"
+                    Name="Éditeur de schéma (KiCad-Claude)"
+                    Target="[INSTALLFOLDER]bin\eeschema.exe"
+                    WorkingDirectory="INSTALLFOLDER" />
+          <Shortcut Id="PcbnewShortcut"
+                    Name="Éditeur de PCB (KiCad-Claude)"
+                    Target="[INSTALLFOLDER]bin\pcbnew.exe"
+                    WorkingDirectory="INSTALLFOLDER" />
+          <RemoveFolder Id="RemoveStartMenuDir" On="uninstall" />
+          <RegistryValue Root="HKLM" Key="Software\KiCad-Claude" Name="StartMenu"
+                         Type="integer" Value="1" KeyPath="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="DesktopFolder">
+      <Component Id="DesktopShortcut" Guid="3C7A9F12-8B2E-4D61-9A0C-5E4B7D2F1C88">
+        <Shortcut Id="KiCadDesktop"
+                  Name="KiCad-Claude"
+                  Target="[INSTALLFOLDER]bin\kicad.exe"
+                  WorkingDirectory="INSTALLFOLDER" />
+        <RegistryValue Root="HKLM" Key="Software\KiCad-Claude" Name="Desktop"
+                       Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+
+  </Package>
+</Wix>
