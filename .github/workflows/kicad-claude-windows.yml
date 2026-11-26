@@ -55,15 +55,15 @@ jobs:
           $cfg | ConvertTo-Json -Depth 10 | Set-Content win-builder/build-configs/kicad-claude.json
           Get-Content win-builder/build-configs/kicad-claude.json
 
+      - name: Set up vcpkg (must run before Init: it resets the builder settings)
+        working-directory: win-builder
+        shell: powershell
+        run: ./build.ps1 -Vcpkg -Latest -Arch x64 -BuildConfigName kicad-claude
+
       - name: Init builder
         working-directory: win-builder
         shell: powershell
         run: ./build.ps1 -Init
-
-      - name: Set up vcpkg
-        working-directory: win-builder
-        shell: powershell
-        run: ./build.ps1 -Vcpkg -Latest -Arch x64 -BuildConfigName kicad-claude
 
       - name: Build KiCad (vcpkg dependencies + KiCad)
         working-directory: win-builder
