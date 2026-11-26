@@ -7,10 +7,12 @@
 # a second run reuses what was already built and is much faster.
 set -euo pipefail
 
-REPO="scriptsabbaselava-afk/kicad-claude"
-REPO_URL="https://github.com/${REPO}.git"
-REF="${KICAD_CLAUDE_REF:-main}"
-KICAD_LIBS_REF="10.0.8"
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+KICAD_VERSION="10.0.8"
+KICAD_URL="https://gitlab.com/kicad/code/kicad.git"
+PATCH="$HERE/kicad-claude.patch"
+PACKAGING="$HERE/claude-packaging"
+REPO="scriptsabbaselava-afk/kicad-claude"   # only used for the text of the optional installer zip
 WORK="$HOME/kicad-claude-build"
 DEST="/Applications/KiCad-Claude"
 
@@ -62,13 +64,15 @@ else
     git clone -q --depth 1 --branch 10.0 https://gitlab.com/kicad/packaging/kicad-mac-builder.git mac-builder
 fi
 
-step "Téléchargement des scripts KiCad-Claude"
-if [[ -d kicad-claude/.git ]]; then
-    git -C kicad-claude fetch -q --depth 1 origin "$REF"
-    git -C kicad-claude reset -q --hard FETCH_HEAD
+step "Téléchargement de KiCad ${KICAD_VERSION} (code source officiel) et ajout du panneau Claude"
+[[ -f "$PATCH" ]] || die "Fichier manquant : $PATCH"
+if [[ -d kicad-src/.git ]]; then
+    git -C kicad-src reset -q --hard
+    git -C kicad-src clean -qfd
 else
-    git clone -q --depth 1 --branch "$REF" "$REPO_URL" kicad-claude
+    git clone -q --depth 1 --branch "$KICAD_VERSION" "$KICAD_URL" kicad-src
 fi
+git -C kicad-src apply --whitespace=nowarn "$PATCH" || die "Le patch KiCad-Claude ne s'applique pas sur KiCad ${KICAD_VERSION}."
 
 # ---- Build dependencies --------------------------------------------------------
 step "Installation des dépendances (Homebrew)"
@@ -81,12 +85,11 @@ step "Compilation de KiCad-Claude (la première fois : 1 à 3 heures)"
 cd mac-builder
 # caffeinate keeps the Mac awake during the build
 caffeinate -i ./build.py --arch="$ARCH" \
-    --kicad-git-url "$REPO_URL" \
-    --kicad-ref "$REF" \
-    --symbols-ref "$KICAD_LIBS_REF" \
-    --footprints-ref "$KICAD_LIBS_REF" \
-    --templates-ref "$KICAD_LIBS_REF" \
-    --packages3d-ref "$KICAD_LIBS_REF" \
+    --kicad-source-dir "$WORK/kicad-src" \
+    --symbols-ref "$KICAD_VERSION" \
+    --footprints-ref "$KICAD_VERSION" \
+    --templates-ref "$KICAD_VERSION" \
+    --packages3d-ref "$KICAD_VERSION" \
     --build-type Release \
     --extra-version "claude" \
     --target package-kicad-nightly
@@ -98,7 +101,7 @@ DMG=$(ls -t mac-builder/build/dmg/*.dmg 2>/dev/null | head -n 1 || true)
 # ---- Claude components + zip ----------------------------------------------------
 step "Ajout du panneau Claude : Node.js, serveur MCP KiCad, dépendances Python"
 rm -rf out
-kicad-claude/claude-packaging/macos/make-release-zip.sh "$DMG" "$ARCH" "$WORK/out" "$REPO"
+"$PACKAGING/macos/make-release-zip.sh" "$DMG" "$ARCH" "$WORK/out" "$REPO"
 ZIP="$WORK/out/KiCad-Claude-macOS-${ARCH}.zip"
 [[ -f "$ZIP" ]] || die "Le paquet final n'a pas été créé."
 
